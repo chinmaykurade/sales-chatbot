@@ -1,7 +1,7 @@
 from typing import TypedDict, Annotated, Optional
 from langgraph.graph import add_messages, StateGraph, END
 from langchain_core.messages import HumanMessage, AIMessageChunk, ToolMessage, AIMessage
-from langgraph.graph import END, START, MessagesState, StateGraph
+from langgraph.graph import END, START, StateGraph
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langgraph.prebuilt import ToolNode
@@ -24,7 +24,6 @@ db = SQLDatabase.from_uri(DATABASE_URL)
 
 print(f"Dialect: {db.dialect}")
 print(f"Available tables: {db.get_usable_table_names()}")
-print(f'Sample output: {db.run("SELECT * FROM amazon_sale_report_eeeda970 LIMIT 5;")}')
 
 
 toolkit = SQLDatabaseToolkit(db=db, llm=llm)
@@ -51,7 +50,7 @@ async def intent_detection(state: State):
     
     intent = "qna"
     if "summarize" in last_message_content.lower():
-        new_message = AIMessage("Routing to Summarizer workflow.")
+        new_message = HumanMessage("Find out the overall sales performance and YoY growth by various groups.")
         intent = "summarize"
     else:
         new_message = AIMessage("Routing to conversation Q&A workflow.")
@@ -61,14 +60,14 @@ async def intent_detection(state: State):
         "intent": intent
     }
     
-async def intent_router(state: State):
-    if state["intent"] == "summarize":
-        return "model"
-    return "list_tables"
+# async def intent_router(state: State):
+#     if state["intent"] == "summarize":
+#         return "model"
+#     return "list_tables"
 
 
 
-def list_tables(state: MessagesState):
+def list_tables(state: State):
     tool_call = {
         "name": "sql_db_list_tables",
         "args": {},
@@ -84,7 +83,7 @@ def list_tables(state: MessagesState):
     return {"messages": [tool_call_message, tool_message, response]}
 
 
-def call_get_schema(state: MessagesState):
+def call_get_schema(state: State):
     # Note that LangChain enforces that all models accept `tool_choice="any"`
     # as well as `tool_choice=<string name of tool>`.
     llm_with_tools = llm.bind_tools([get_schema_tool], tool_choice="any")
@@ -93,7 +92,7 @@ def call_get_schema(state: MessagesState):
     return {"messages": [response]}
 
 
-def generate_query(state: MessagesState):
+def generate_query(state: State):
     system_message = {
         "role": "system",
         "content": generate_query_system_prompt.format(
@@ -109,7 +108,7 @@ def generate_query(state: MessagesState):
     return {"messages": [response]}
 
 
-def check_query(state: MessagesState):
+def check_query(state: State):
     system_message = {
         "role": "system",
         "content": check_query_system_prompt.format(dialect=db.dialect),
@@ -125,7 +124,7 @@ def check_query(state: MessagesState):
     return {"messages": [response]}
 
 
-def should_continue(state: MessagesState) -> Literal[END, "check_query"]:
+def should_continue(state: State) -> Literal[END, "check_query"]:
     messages = state["messages"]
     last_message = messages[-1]
     if not last_message.tool_calls:

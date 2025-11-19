@@ -26,8 +26,7 @@ from sqlalchemy import create_engine, MetaData
 from sqlalchemy.exc import SQLAlchemyError
 import re
 
-from nodes import (intent_router, 
-                   intent_detection, 
+from nodes import (intent_detection, 
                    list_tables,
                    call_get_schema,
                    generate_query,
@@ -35,7 +34,6 @@ from nodes import (intent_router,
                    check_query,
                    run_query_node,
                    should_continue,
-                   model,
                    State)
 
 load_dotenv()
@@ -51,10 +49,12 @@ builder.add_node("get_schema", get_schema_node)
 builder.add_node("generate_query", generate_query)
 builder.add_node("check_query", check_query)
 builder.add_node("run_query", run_query_node)
-builder.add_node("model", model)
+# builder.add_node("model", model)
 
-builder.add_conditional_edges("intent_detection", intent_router)
+
 builder.add_edge(START, "intent_detection")
+# builder.add_conditional_edges("intent_detection", intent_router)
+builder.add_edge("intent_detection", "list_tables")
 builder.add_edge("list_tables", "call_get_schema")
 builder.add_edge("call_get_schema", "get_schema")
 builder.add_edge("get_schema", "generate_query")

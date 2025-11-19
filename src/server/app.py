@@ -42,7 +42,7 @@ def sanitise_table_name(name: str) -> str:
     cleaned = re.sub(r"[^a-zA-Z0-9_]", "_", name.lower()).strip("_")
     if not cleaned:
         cleaned = "upload"
-    return f"{cleaned}_{uuid4().hex[:8]}"
+    return cleaned
 
 def ingest_tabular_file(file_path: Path, original_name: str):
     suffix = file_path.suffix.lower()
