@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    env_file:
+      - ./server/.env
+    volumes:
+      - ./server/uploaded_files:/app/uploaded_files
+      - ./server:/app
+    ports:
+      - "8000:8000"
+
+  # client:
+  #   build:
+  #     context: ./client
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     - NEXT_PUBLIC_SERVER_URL=http://server:8000
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - server
+  #     - postgres
+
+volumes:
+  postgres_data:
