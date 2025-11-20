@@ -42,6 +42,11 @@ There may also be other relevant columns to consider.
 After we find the characteristics, we need to summarize the data
 to get the overall sales performance based on the characteristics.
 
+The user may also want to summarize a certain aspect of the data. 
+Here is the user query in that case:
+{user_query}
+Consider the user query ONLY IF the user has additional instructions in the user query, apart from summarize.
+
 Output Format:
 A string summary of the sales performance. e.g. Overall sales grew 12% YoY, led by the West
 region."""

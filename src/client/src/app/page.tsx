@@ -7,8 +7,14 @@ import React, { useState } from 'react';
 
 interface SearchInfo {
   stages: string[];
-  query: string;
-  urls: string[];
+  query?: string;
+  urls?: string[] | string;
+  error?: string;
+}
+
+interface ToolCall {
+  id: string;
+  name: string;
 }
 
 interface Message {
@@ -18,6 +24,7 @@ interface Message {
   type: string;
   isLoading?: boolean;
   searchInfo?: SearchInfo;
+  toolCalls?: ToolCall[];
 }
 
 const Home = () => {
@@ -86,10 +93,29 @@ const Home = () => {
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            console.log(data);
 
             if (data.type === 'checkpoint') {
               // Store the checkpoint ID for future requests
               setCheckpointId(data.checkpoint_id);
+            }
+            else if (data.type === 'tool_call') {
+              const toolName = data.tool_name || 'Tool';
+              const toolCallEntry: ToolCall = {
+                id: `${toolName}-${Date.now()}-${Math.random()}`,
+                name: toolName
+              };
+
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === aiResponseId
+                    ? {
+                      ...msg,
+                      toolCalls: [...(msg.toolCalls || []), toolCallEntry]
+                    }
+                    : msg
+                )
+              );
             }
             else if (data.type === 'content') {
               streamedContent += data.content;

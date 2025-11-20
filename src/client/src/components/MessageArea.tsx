@@ -1,10 +1,15 @@
-import React from 'react';
+﻿import React from 'react';
 
 interface SearchInfo {
     stages: string[];
     query?: string;
     urls?: string[] | string;
     error?: string;
+}
+
+interface ToolCall {
+    id: string;
+    name: string;
 }
 
 interface Message {
@@ -14,6 +19,7 @@ interface Message {
     type: string;
     isLoading?: boolean;
     searchInfo?: SearchInfo;
+    toolCalls?: ToolCall[];
 }
 
 interface MessageAreaProps {
@@ -127,6 +133,34 @@ const SearchStages = ({ searchInfo }: SearchStagesProps) => {
     );
 };
 
+interface ToolActivityProps {
+    toolCalls?: ToolCall[];
+}
+
+const ToolActivity = ({ toolCalls }: ToolActivityProps) => {
+    if (!toolCalls?.length) return null;
+
+    return (
+        <div className="w-full rounded-3xl border border-emerald-400/20 bg-emerald-500/5 p-4 text-sm text-white/80 shadow-inner shadow-black/20">
+            <p className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] text-emerald-200/80">
+                <svg className="h-3.5 w-3.5 text-emerald-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Tool Activity
+            </p>
+            <div className="space-y-2">
+                {toolCalls.map((call) => (
+                    <div key={call.id} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs shadow-inner shadow-black/10">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                        <span className="font-semibold text-white">{call.name}</span>
+                        <span className="text-white/60">running...</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 interface AvatarProps {
     isUser: boolean;
 }
@@ -158,6 +192,7 @@ const MessageArea = ({ messages }: MessageAreaProps) => {
                     <div key={message.id} className={`flex w-full gap-4 ${message.isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                         <Avatar isUser={message.isUser} />
                         <div className={`flex w-full max-w-xl flex-col gap-3 ${message.isUser ? 'items-end' : 'items-start'}`}>
+                            {!message.isUser && message.toolCalls?.length && <ToolActivity toolCalls={message.toolCalls} />}
                             {!message.isUser && message.searchInfo && <SearchStages searchInfo={message.searchInfo} />}
 
                             <div
@@ -183,3 +218,4 @@ const MessageArea = ({ messages }: MessageAreaProps) => {
 };
 
 export default MessageArea;
+

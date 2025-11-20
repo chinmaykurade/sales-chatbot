@@ -140,7 +140,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = N
 
     async for event in events:
         event_type = event["event"]
-        # print(event_type)
+        print(event_type)
         
         if event_type == "on_chat_model_stream":
             chunk_content = serialise_ai_message_chunk(event["data"]["chunk"])
