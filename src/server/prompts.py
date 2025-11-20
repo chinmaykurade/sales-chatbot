@@ -29,3 +29,19 @@ just reproduce the original query.
 
 You will call the appropriate tool to execute the query after running this check.
 """
+
+
+summarize_prompt = """
+We need to analyze the sales data from the given SQL database.
+First, we should identify the characteristics of the data like
+- The time period of the data
+- The different categories of products
+- The different regions
+Note that some or all of the above columns may be present in the data. 
+There may also be other relevant columns to consider.
+After we find the characteristics, we need to summarize the data
+to get the overall sales performance based on the characteristics.
+
+Output Format:
+A string summary of the sales performance. e.g. Overall sales grew 12% YoY, led by the West
+region."""

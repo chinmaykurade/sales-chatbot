@@ -10,7 +10,7 @@ import os
 from typing import Literal
 
 
-from prompts import generate_query_system_prompt, check_query_system_prompt
+from prompts import generate_query_system_prompt, check_query_system_prompt, summarize_prompt
 
 llm = ChatOpenAI(model="gpt-5.1")
 
@@ -50,7 +50,7 @@ async def intent_detection(state: State):
     
     intent = "qna"
     if "summarize" in last_message_content.lower():
-        new_message = HumanMessage("Find out the overall sales performance and YoY growth by various groups.")
+        new_message = HumanMessage(summarize_prompt)
         intent = "summarize"
     else:
         new_message = AIMessage("Routing to conversation Q&A workflow.")

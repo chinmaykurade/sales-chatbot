@@ -140,37 +140,41 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = N
 
     async for event in events:
         event_type = event["event"]
-        print(event_type)
+        # print(event_type)
         
         if event_type == "on_chat_model_stream":
             chunk_content = serialise_ai_message_chunk(event["data"]["chunk"])
             
             yield format_sse_event({"type": "content", "content": chunk_content})
             
-        elif event_type == "on_chat_model_end":
-            # Check if there are tool calls for search
-            tool_calls = event["data"]["output"].tool_calls if hasattr(event["data"]["output"], "tool_calls") else []
-            search_calls = [call for call in tool_calls if call["name"] == "tavily_search_results_json"]
+        # elif event_type == "on_chat_model_end":
+        #     # Check if there are tool calls for search
+        #     tool_calls = event["data"]["output"].tool_calls if hasattr(event["data"]["output"], "tool_calls") else []
+        #     search_calls = [call for call in tool_calls if call["name"] == "tavily_search_results_json"]
             
-            if search_calls:
-                # Signal that a search is starting
-                search_query = search_calls[0]["args"].get("query", "")
-                yield format_sse_event({"type": "search_start", "query": search_query})
-                
-        elif event_type == "on_tool_end" and event["name"] == "tavily_search_results_json":
-            # Search completed - send results or error
-            output = event["data"]["output"]
+        #     if search_calls:
+        #         # Signal that a search is starting
+        #         search_query = search_calls[0]["args"].get("query", "")
+        #         yield format_sse_event({"type": "search_start", "query": search_query})
+        
+        elif event_type == "on_tool_end":
+            yield format_sse_event({"type": "tool_call", "tool_name": event["name"]})
+            print(event)
+        
+        # elif event_type == "on_tool_end" and event["name"] == "tavily_search_results_json":
+        #     # Search completed - send results or error
+        #     output = event["data"]["output"]
             
-            # Check if output is a list 
-            if isinstance(output, list):
-                # Extract URLs from list of search results
-                urls = []
-                for item in output:
-                    if isinstance(item, dict) and "url" in item:
-                        urls.append(item["url"])
+        #     # Check if output is a list 
+        #     if isinstance(output, list):
+        #         # Extract URLs from list of search results
+        #         urls = []
+        #         for item in output:
+        #             if isinstance(item, dict) and "url" in item:
+        #                 urls.append(item["url"])
                 
-                # Convert URLs to JSON and yield them
-                yield format_sse_event({"type": "search_results", "urls": urls})
+        #         # Convert URLs to JSON and yield them
+        #         yield format_sse_event({"type": "search_results", "urls": urls})
     
     # Send an end event
     yield format_sse_event({"type": "end"})
