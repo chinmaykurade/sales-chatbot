@@ -87,17 +87,17 @@ The backend exposes a minimal REST surface (`src/server/app.py`):
 
 Uploaded binaries land in `src/server/uploaded_files`, and any CSV/Excel file automatically becomes a SQL table the agent can query.
 
-## SQL Agent Workflow
+## Multi-agent
 
-The SQL agent lives in `src/server/sql_agent.py` and `src/server/nodes.py`. It uses LangGraph's state machine plus LangChain's `SQLDatabaseToolkit` to safely generate, verify, and execute SQL.
+The agents are defined in `src/server/sql_agent.py` and `src/server/nodes.py`. It uses LangGraph's state machine plus LangChain's `SQLDatabaseToolkit` to safely generate, verify, and execute SQL.
 
 1. **State tracking** - `State` keeps the running `messages` list (LangChain format) plus an optional `intent`.
 2. **Intent detection (`intent_detection`)** - Examines the most recent human input. If "summarize" is detected it injects a specialised summarization prompt; otherwise it routes into a standard Q&A flow (`nodes.py:33-71`).
 3. **Table discovery (`list_tables`)** - Calls the toolkit's `sql_db_list_tables` tool so the agent can reflect the current schema (especially useful after uploading CSV/XLSX files).
 4. **Schema inspection (`call_get_schema` -> `get_schema`)** - Binds the `sql_db_schema` tool, prompting the LLM to retrieve column definitions for relevant tables before writing SQL.
-5. **Query drafting (`generate_query`)** - Prepends `generate_query_system_prompt` (limits results, forbids DML) and lets the LLM either answer directly or call the `sql_db_query` tool with a proposed SQL statement (`nodes.py:81-110`).
-6. **Guardrail (`should_continue` + `check_query`)** - If the model requested a tool call, the graph routes through `check_query`, which re-checks the SQL using `check_query_system_prompt`. This catches common mistakes (NULL handling, joins, incorrect functions) before execution.
-7. **Execution & iteration (`run_query_node`)** - The verified SQL hits Postgres through the toolkit's `sql_db_query` tool. Results are appended to the conversation, giving the LLM grounded context. The graph then loops back to `generate_query` so the LLM can interpret the results and craft the natural-language answer.
+5. **Query Generation Agent (`generate_query`)** - Prepends `generate_query_system_prompt` (limits results, forbids DML) and lets the LLM either answer directly or call the `sql_db_query` tool with a proposed SQL statement (`nodes.py:81-110`).
+6. **Query Validation Agent (`should_continue` + `check_query`)** - If the model requested a tool call, the graph routes through `check_query`, which re-checks the SQL using `check_query_system_prompt`. This catches common mistakes (NULL handling, joins, incorrect functions) before execution.
+7. **Query Execution and Iteration Agent (`run_query_node`)** - The verified SQL hits Postgres through the toolkit's `sql_db_query` tool. Results are appended to the conversation, giving the LLM grounded context. The graph then loops back to `generate_query` so the LLM can interpret the results and craft the natural-language answer.
 8. **Memory & streaming** - `sql_agent.py` compiles the graph with `MemorySaver`, enabling long-running conversations keyed by the `checkpoint_id` that the server hands back to the UI (`app.py:40-126`). The FastAPI endpoint streams each `AIMessageChunk` so tokens appear live on the frontend.
 
 Because schema inspection and query checking are enforced as graph edges, the agent consistently sees up-to-date metadata and only executes SQL that passes validation.
