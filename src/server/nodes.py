@@ -6,11 +6,16 @@ from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langgraph.prebuilt import ToolNode
 from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
 import os
 from typing import Literal
 
 
-from prompts import generate_query_system_prompt, check_query_system_prompt, summarize_prompt
+from prompts import (generate_query_system_prompt, 
+                     check_query_system_prompt, 
+                     data_extraction_system_prompt,
+                     validation_and_answer_system_prompt,
+                     summarize_prompt)
 
 llm = ChatOpenAI(model="gpt-5.1")
 
@@ -29,6 +34,8 @@ print(f"Available tables: {db.get_usable_table_names()}")
 toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
 tools = toolkit.get_tools()
+
+list_tables_tool = next(tool for tool in tools if tool.name == "sql_db_list_tables")
 
 get_schema_tool = next(tool for tool in tools if tool.name == "sql_db_schema")
 get_schema_node = ToolNode([get_schema_tool], name="get_schema")
@@ -95,44 +102,70 @@ def call_get_schema(state: State):
 
 
 def generate_query(state: State):
-    system_message = {
-        "role": "system",
-        "content": generate_query_system_prompt.format(
+    system_message = generate_query_system_prompt.format(
                     dialect=db.dialect,
-                    top_k=5,
-                ),
-    }
+                    top_k=5,)
     # We do not force a tool call here, to allow the model to
     # respond naturally when it obtains the solution.
-    llm_with_tools = llm.bind_tools([run_query_tool])
-    response = llm_with_tools.invoke([system_message] + state["messages"])
+    agent = create_agent("gpt-5", 
+                         tools=[run_query_tool],
+                         system_prompt=system_message)
+    response = agent.invoke({"messages": state["messages"]})
 
     return {"messages": [response]}
 
 
-def check_query(state: State):
-    system_message = {
-        "role": "system",
-        "content": check_query_system_prompt.format(dialect=db.dialect),
-    }
-
-    # Generate an artificial user message to check
-    tool_call = state["messages"][-1].tool_calls[0]
-    user_message = {"role": "user", "content": tool_call["args"]["query"]}
-    llm_with_tools = llm.bind_tools([run_query_tool], tool_choice="any")
-    response = llm_with_tools.invoke([system_message, user_message])
-    response.id = state["messages"][-1].id
+def data_extraction_agent(state: State):
+    system_message = data_extraction_system_prompt.format(
+                    dialect=db.dialect,
+                    top_k=5,
+                )
+    agent = create_agent("gpt-5", 
+                         tools=[run_query_tool],
+                         system_prompt=system_message)
+    # We do not force a tool call here, to allow the model to
+    # respond naturally when it obtains the solution.
+    response = agent.invoke({"messages": state["messages"]})
 
     return {"messages": [response]}
 
 
-def should_continue(state: State) -> Literal[END, "check_query"]:
-    messages = state["messages"]
-    last_message = messages[-1]
-    if not last_message.tool_calls:
-        return END
-    else:
-        return "check_query"
+def validate_and_answer(state: State):
+    system_message = validation_and_answer_system_prompt
+    # We do not force a tool call here, to allow the model to
+    # respond naturally when it obtains the solution.
+    agent = create_agent("gpt-5", 
+                         system_prompt=system_message)
+    # We do not force a tool call here, to allow the model to
+    # respond naturally when it obtains the solution.
+    response = agent.invoke({"messages": state["messages"]})
+
+    return {"messages": [response]}
+
+
+# def check_query(state: State):
+#     system_message = {
+#         "role": "system",
+#         "content": check_query_system_prompt.format(dialect=db.dialect),
+#     }
+
+#     # Generate an artificial user message to check
+#     tool_call = state["messages"][-1].tool_calls[0]
+#     user_message = {"role": "user", "content": tool_call["args"]["query"]}
+#     llm_with_tools = llm.bind_tools([run_query_tool], tool_choice="any")
+#     response = llm_with_tools.invoke([system_message, user_message])
+#     response.id = state["messages"][-1].id
+
+#     return {"messages": [response]}
+
+
+# def should_continue(state: State) -> Literal[END, "check_query"]:
+#     messages = state["messages"]
+#     last_message = messages[-1]
+#     if not last_message.tool_calls:
+#         return "data_extraction"
+#     else:
+#         return "check_query"
     
     
 async def model(state: State):

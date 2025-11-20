@@ -27,13 +27,9 @@ from sqlalchemy.exc import SQLAlchemyError
 import re
 
 from nodes import (intent_detection, 
-                   list_tables,
-                   call_get_schema,
                    generate_query,
-                   get_schema_node,
-                   check_query,
-                   run_query_node,
-                   should_continue,
+                   data_extraction_agent,
+                   validate_and_answer,
                    State)
 
 load_dotenv()
@@ -43,27 +39,19 @@ memory = MemorySaver()
 
 builder = StateGraph(State)
 builder.add_node("intent_detection", intent_detection)
-builder.add_node("list_tables", list_tables)
-builder.add_node("call_get_schema", call_get_schema)
-builder.add_node("get_schema", get_schema_node)
 builder.add_node("generate_query", generate_query)
-builder.add_node("check_query", check_query)
-builder.add_node("run_query", run_query_node)
+builder.add_node("data_extraction", data_extraction_agent)
+builder.add_node("validate", validate_and_answer)
 # builder.add_node("model", model)
 
 
 builder.add_edge(START, "intent_detection")
 # builder.add_conditional_edges("intent_detection", intent_router)
-builder.add_edge("intent_detection", "list_tables")
-builder.add_edge("list_tables", "call_get_schema")
-builder.add_edge("call_get_schema", "get_schema")
-builder.add_edge("get_schema", "generate_query")
-builder.add_conditional_edges(
-    "generate_query",
-    should_continue,
-)
-builder.add_edge("check_query", "run_query")
-builder.add_edge("run_query", "generate_query")
+builder.add_edge("intent_detection", "generate_query")
+builder.add_edge("generate_query", "data_extraction")
+builder.add_edge("data_extraction", "validate")
+builder.add_edge("validate", END)
+
 
 agent = builder.compile(checkpointer=memory)
 
