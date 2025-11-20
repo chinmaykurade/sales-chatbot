@@ -51,7 +51,7 @@ async def intent_detection(state: State):
     intent = "qna"
     if "summarize" in last_message_content.lower():
         new_message = HumanMessage(summarize_prompt.format(
-            additional_user_query=last_message_content
+            user_query=last_message_content
         ))
         intent = "summarize"
     else:
